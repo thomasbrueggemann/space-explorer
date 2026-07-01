@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<meta name="theme-color" content="#05060f"/>
+<title>🚀 Space Explorer — Solar System Adventure</title>
+<style>
+  :root{
+    --ui-bg: rgba(16, 20, 46, 0.82);
+    --ui-border: rgba(140, 160, 255, 0.35);
+    --accent: #ffb347;
+    --accent2: #7cc4ff;
+    --text: #f4f6ff;
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body{
+    margin:0; padding:0; height:100%; overflow:hidden; background:#05060f; color:var(--text);
+    font-family: ui-rounded, "SF Pro Rounded", "Comic Sans MS", "Chalkboard SE", "Segoe UI", sans-serif;
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+  }
+  #app{ position:fixed; inset:0; }
+  #app canvas{ display:block; touch-action:none; }
+  #labels{ position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:2; }
+
+  /* ---------- generic UI ---------- */
+  .btn{
+    background: linear-gradient(180deg, #3b4a8f, #232c5e);
+    border: 2px solid var(--ui-border);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 10px 16px;
+    font-size: 16px; font-weight:700; font-family: inherit;
+    cursor:pointer; touch-action: manipulation;
+    box-shadow: 0 3px 10px rgba(0,0,0,.45);
+    transition: transform .08s ease;
+  }
+  .btn:active{ transform: scale(.93); }
+  .btn.small{ padding: 7px 12px; font-size:14px; }
+  .btn.glow{ background: linear-gradient(180deg, #ff9a3d, #e4661b); border-color:#ffd9a1; }
+
+  /* ---------- top bar ---------- */
+  #topbar{
+    position:fixed; top:0; left:0; right:0; z-index:20;
+    display:flex; align-items:center; gap:8px;
+    padding: calc(8px + env(safe-area-inset-top)) 12px 8px 12px;
+    pointer-events:none;
+  }
+  #topbar > *{ pointer-events:auto; }
+  #title{ font-size:19px; font-weight:800; text-shadow:0 2px 8px #000; white-space:nowrap; }
+  #topSpacer{ flex:1; pointer-events:none; }
+  .timegrp{ display:flex; gap:4px; background:var(--ui-bg); border:2px solid var(--ui-border); border-radius:999px; padding:3px; }
+  .timegrp button{
+    border:none; background:transparent; color:var(--text); font-size:16px;
+    border-radius:999px; padding:5px 10px; cursor:pointer; font-family:inherit;
+  }
+  .timegrp button.on{ background:#4a5cb8; }
+
+  /* ---------- mission banner ---------- */
+  #mission{
+    position:fixed; z-index:15; left:50%; transform:translateX(-50%);
+    top: calc(58px + env(safe-area-inset-top));
+    background: var(--ui-bg); border:2px solid var(--ui-border); border-radius:18px;
+    padding: 8px 14px; max-width:min(480px, 92vw); text-align:center;
+    box-shadow: 0 4px 16px rgba(0,0,0,.5); display:none;
+  }
+  #missionTitle{ font-size:12px; letter-spacing:1px; color:var(--accent); font-weight:800; }
+  #missionText{ font-size:16px; font-weight:800; margin:2px 0; }
+  #missionHint{ font-size:12.5px; opacity:.8; }
+  #missionSkip{
+    margin-top:5px; background:none; border:none; color:var(--accent2);
+    font-size:12.5px; cursor:pointer; font-family:inherit; text-decoration:underline;
+  }
+
+  /* ---------- bottom planet nav ---------- */
+  #nav{
+    position:fixed; z-index:20; left:0; right:0;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    display:flex; gap:8px; overflow-x:auto; padding:6px 12px;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  }
+  #nav::-webkit-scrollbar{ display:none; }
+  .navbtn{
+    flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:1px;
+    background: var(--ui-bg); border:2px solid var(--ui-border); border-radius:16px;
+    color:var(--text); font-family:inherit; padding:7px 11px; min-width:62px;
+    cursor:pointer; transition: transform .08s ease;
+  }
+  .navbtn:active{ transform:scale(.9); }
+  .navbtn .e{ font-size:22px; line-height:1.1; }
+  .navbtn .n{ font-size:11px; font-weight:700; }
+  .navbtn.visited .n::after{ content:" ✓"; color:#7dffa1; }
+
+  /* ---------- planet labels (CSS2D) ---------- */
+  .plabel{
+    color:#fff; font-size:13px; font-weight:800;
+    text-shadow: 0 0 6px #000, 0 2px 4px #000;
+    background: rgba(10,14,34,.55); border:1.5px solid rgba(140,160,255,.4);
+    padding:3px 9px; border-radius:999px; cursor:pointer; pointer-events:auto;
+    white-space:nowrap; touch-action:manipulation;
+  }
+
+  /* ---------- info card ---------- */
+  #card{
+    position:fixed; z-index:25; right:12px; top: calc(58px + env(safe-area-inset-top));
+    width:340px; max-width:calc(100vw - 24px);
+    background: linear-gradient(180deg, rgba(24,30,66,.96), rgba(12,15,38,.96));
+    border:2px solid var(--ui-border); border-radius:22px; padding:16px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.6);
+    display:none; max-height: calc(100vh - 200px); overflow-y:auto;
+  }
+  #cardClose{ position:absolute; top:10px; right:10px; background:#2a355f; border:none; color:#fff;
+    width:32px; height:32px; border-radius:50%; font-size:15px; cursor:pointer; }
+  #cardHead{ display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  #cardEmoji{ font-size:44px; }
+  #cardName{ font-size:24px; font-weight:900; margin:0; }
+  #cardTag{ font-size:13.5px; color:var(--accent); font-weight:700; margin:0 0 8px; }
+  .fact{ display:flex; gap:9px; align-items:flex-start; margin:8px 0; font-size:14.5px; line-height:1.35; }
+  .fact .fi{ font-size:19px; flex:0 0 auto; }
+  #cardFun{
+    margin-top:10px; background:rgba(255,179,71,.12); border:1.5px dashed rgba(255,179,71,.5);
+    border-radius:14px; padding:9px 11px; font-size:13.5px; line-height:1.35;
+  }
+  #cardFun b{ color:var(--accent); }
+  #cardBtns{ display:flex; gap:8px; margin-top:12px; align-items:center; }
+  #stampNote{ font-size:12px; color:#7dffa1; font-weight:800; margin-left:auto; }
+
+  /* ---------- modals ---------- */
+  .modal{
+    position:fixed; inset:0; z-index:40; display:none;
+    background: rgba(3,4,12,.7); backdrop-filter: blur(4px);
+    align-items:center; justify-content:center; padding:16px;
+  }
+  .modal .inner{
+    background: linear-gradient(180deg, rgba(26,32,72,.98), rgba(12,15,38,.98));
+    border:2px solid var(--ui-border); border-radius:24px; padding:20px;
+    max-width:520px; width:100%; max-height:82vh; overflow-y:auto; position:relative;
+  }
+  .modal h2{ margin:0 0 4px; font-size:22px; }
+  .modal .close{ position:absolute; top:12px; right:12px; background:#2a355f; border:none; color:#fff;
+    width:34px; height:34px; border-radius:50%; font-size:16px; cursor:pointer; }
+  #passGrid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(84px,1fr)); gap:10px; margin-top:12px; }
+  .stamp{
+    text-align:center; background:rgba(255,255,255,.05); border:2px dashed rgba(140,160,255,.3);
+    border-radius:16px; padding:10px 4px;
+  }
+  .stamp .se{ font-size:30px; filter:grayscale(1); opacity:.3; }
+  .stamp .sn{ font-size:11px; font-weight:700; opacity:.5; margin-top:3px; }
+  .stamp.got{ border-style:solid; border-color:#7dffa1; background:rgba(125,255,161,.08); }
+  .stamp.got .se{ filter:none; opacity:1; }
+  .stamp.got .sn{ opacity:1; }
+  .stamp.got::after{ content:"🛂 STAMPED"; display:block; font-size:9px; color:#7dffa1; font-weight:800; margin-top:2px; }
+  .helpline{ display:flex; gap:10px; margin:10px 0; font-size:15px; align-items:flex-start; line-height:1.35; }
+  .helpline .hi{ font-size:21px; flex:0 0 auto; }
+  .credits{ font-size:11px; opacity:.55; margin-top:14px; line-height:1.4; }
+
+  /* ---------- toasts ---------- */
+  #toast{
+    position:fixed; z-index:50; left:50%; transform:translateX(-50%) translateY(20px);
+    bottom: calc(96px + env(safe-area-inset-bottom));
+    background:var(--ui-bg); border:2px solid var(--ui-border); border-radius:18px;
+    padding:10px 18px; font-size:15px; font-weight:700; text-align:center;
+    max-width:92vw; opacity:0; transition: opacity .3s, transform .3s; pointer-events:none;
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ---------- confetti ---------- */
+  #confetti{ position:fixed; inset:0; z-index:60; pointer-events:none; }
+
+  /* ---------- start screen ---------- */
+  #startScreen{
+    position:fixed; inset:0; z-index:100; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:14px; text-align:center; padding:24px;
+    background: radial-gradient(ellipse at 50% 120%, #1b2450 0%, #0a0d22 55%, #05060f 100%);
+    transition: opacity .8s ease;
+  }
+  #startScreen.hide{ opacity:0; pointer-events:none; }
+  #startScreen .starsA, #startScreen .starsB{
+    position:absolute; inset:0; pointer-events:none;
+    background-image:
+      radial-gradient(2px 2px at 20% 30%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 70% 20%, #cde, transparent),
+      radial-gradient(2px 2px at 85% 65%, #ffe9b0, transparent),
+      radial-gradient(1.5px 1.5px at 40% 75%, #fff, transparent),
+      radial-gradient(2px 2px at 10% 85%, #bcd4ff, transparent),
+      radial-gradient(1.5px 1.5px at 55% 45%, #fff, transparent),
+      radial-gradient(2px 2px at 92% 40%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 30% 10%, #ffd9d9, transparent);
+    animation: twinkle 3s ease-in-out infinite alternate;
+  }
+  #startScreen .starsB{
+    transform: rotate(180deg); animation-delay: 1.5s;
+  }
+  @keyframes twinkle{ from{opacity:.35;} to{opacity:1;} }
+  #rocket{ font-size:74px; animation: hover 2.2s ease-in-out infinite; }
+  @keyframes hover{ 0%,100%{ transform:translateY(0) rotate(-4deg);} 50%{ transform:translateY(-16px) rotate(4deg);} }
+  #startScreen h1{
+    margin:0; font-size: clamp(34px, 9vw, 58px); font-weight:900; letter-spacing:1px;
+    background: linear-gradient(90deg, #ffd28a, #ff9a5c, #c48aff, #7cc4ff);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow: none;
+  }
+  #startScreen .sub{ margin:0; font-size:17px; opacity:.85; }
+  #loadbar{ width:min(320px, 70vw); height:12px; border-radius:99px; background:#141a3a; border:1.5px solid var(--ui-border); overflow:hidden; }
+  #loadFill{ height:100%; width:0%; border-radius:99px; background:linear-gradient(90deg,#7cc4ff,#ffb347); transition:width .25s; }
+  #loadStatus{ font-size:13.5px; opacity:.8; min-height:20px; }
+  #blastBtn{
+    font-size:24px; padding:16px 38px; border-radius:999px; border:3px solid #ffd9a1;
+    background: linear-gradient(180deg, #ff9a3d, #e4661b); color:#fff; font-weight:900; font-family:inherit;
+    cursor:pointer; box-shadow: 0 6px 30px rgba(255,140,40,.45);
+    transition: transform .1s;
+  }
+  #blastBtn:disabled{ opacity:.45; filter:grayscale(.6); cursor:wait; }
+  #blastBtn:not(:disabled):hover{ transform:scale(1.05); }
+  #blastBtn:not(:disabled):active{ transform:scale(.94); }
+  .tiny{ font-size:12.5px; opacity:.6; }
+
+  @media (max-width: 720px){
+    #title{ display:none; }
+    #card{
+      right:0; left:0; top:auto; width:auto; border-radius:22px 22px 0 0;
+      bottom: calc(86px + env(safe-area-inset-bottom));
+      max-height: 44vh; margin:0 6px;
+    }
+    #missionText{ font-size:14px; }
+    #mission{ top: calc(54px + env(safe-area-inset-top)); }
+  }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+<div id="labels"></div>
+
+<!-- top bar -->
+<div id="topbar">
+  <div id="title">🚀 Space Explorer</div>
+  <div id="topSpacer"></div>
+  <div class="timegrp" title="Time speed">
+    <button id="tPause" title="Pause time">⏸️</button>
+    <button id="tPlay" class="on" title="Normal time">▶️</button>
+    <button id="tFast" title="Super speed">⏩</button>
+  </div>
+  <button class="btn small" id="muteBtn" title="Sound on/off">🔊</button>
+  <button class="btn small" id="passportBtn" title="My passport">🛂 0/11</button>
+  <button class="btn small" id="helpBtn" title="Help">❓</button>
+</div>
+
+<!-- mission banner -->
+<div id="mission">
+  <div id="missionTitle">🎯 SPACE MISSION</div>
+  <div id="missionText"></div>
+  <div id="missionHint"></div>
+  <button id="missionSkip">Skip this mission ➡️</button>
+</div>
+
+<!-- planet info card -->
+<div id="card">
+  <button id="cardClose">✖</button>
+  <div id="cardHead">
+    <div id="cardEmoji">🪐</div>
+    <div>
+      <h2 id="cardName">Planet</h2>
+    </div>
+  </div>
+  <p id="cardTag"></p>
+  <div id="cardFacts"></div>
+  <div id="cardFun"></div>
+  <div id="cardBtns">
+    <button class="btn small glow" id="sayBtn">🔊 Read to me</button>
+    <button class="btn small" id="prevBtn">◀️</button>
+    <button class="btn small" id="nextBtn">▶️</button>
+    <span id="stampNote"></span>
+  </div>
+</div>
+
+<!-- bottom nav (filled by JS) -->
+<div id="nav"></div>
+
+<!-- passport modal -->
+<div class="modal" id="passportModal">
+  <div class="inner">
+    <button class="close" data-close="passportModal">✖</button>
+    <h2>🛂 My Space Passport</h2>
+    <div style="font-size:13.5px;opacity:.8;">Visit every world to collect all the stamps!</div>
+    <div id="passGrid"></div>
+    <div style="margin-top:14px; text-align:center;">
+      <button class="btn small" id="resetBtn">🔄 Start my adventure over</button>
+    </div>
+  </div>
+</div>
+
+<!-- help modal -->
+<div class="modal" id="helpModal">
+  <div class="inner">
+    <button class="close" data-close="helpModal">✖</button>
+    <h2>❓ How to explore</h2>
+    <div class="helpline"><span class="hi">👆</span><span>Drag with your finger or mouse to look around space.</span></div>
+    <div class="helpline"><span class="hi">🤏</span><span>Pinch with two fingers (or scroll the mouse wheel) to zoom in and out.</span></div>
+    <div class="helpline"><span class="hi">🪐</span><span>Tap any planet (or its name) to fly to it in your rocket!</span></div>
+    <div class="helpline"><span class="hi">🔊</span><span>Tap <b>Read to me</b> and your ship's computer reads the facts out loud.</span></div>
+    <div class="helpline"><span class="hi">🎯</span><span>Follow the missions at the top to become a Space Captain!</span></div>
+    <div class="helpline"><span class="hi">🛂</span><span>Every world you visit gives you a passport stamp. Collect all 11!</span></div>
+    <div class="helpline"><span class="hi">🌌</span><span>Tap <b>All</b> at the bottom to zoom back out and see the whole solar system.</span></div>
+    <div class="helpline"><span class="hi">🤓</span><span><b>Science note:</b> real space is MUCH emptier — we squished the distances so you can see all the planets at once!</span></div>
+    <div class="credits">
+      Planet texture maps: James Hastings-Trew / planetpixelemporium.com via the threex.planets project.
+      Built with three.js. Sounds are made live by your computer — no downloads!
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<canvas id="confetti"></canvas>
+
+<!-- start screen -->
+<div id="startScreen">
+  <div class="starsA"></div><div class="starsB"></div>
+  <div id="rocket">🚀</div>
+  <h1>Space Explorer</h1>
+  <p class="sub">A Solar System Adventure for brave astronauts</p>
+  <div id="loadbar"><div id="loadFill"></div></div>
+  <div id="loadStatus">Warming up the rocket… 0%</div>
+  <button id="blastBtn" disabled>🚀 BLAST OFF!</button>
+  <p class="tiny">Best with sound on! 🔊 &nbsp;•&nbsp; Works with touch and mouse</p>
+</div>
+
+<script>
+  // Friendly offline message if the 3D engine never arrives from the CDN.
+  window.__solarBooted = false;
+  setTimeout(function(){
+    if(!window.__solarBooted){
+      var el = document.getElementById('loadStatus');
+      if(el) el.innerHTML = '😢 The space engine could not load.<br>Please check your internet and reload the page!';
+    }
+  }, 15000);
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+window.__solarBooted = true;
+
+/* ============================== helpers ============================== */
+const $ = id => document.getElementById(id);
+const rand = (a, b) => a + Math.random() * (b - a);
+const smooth = t => t * t * (3 - 2 * t);
+const V3 = (...a) => new THREE.Vector3(...a);
+
+function showToast(text, ms = 2800){
+  const t = $('toast');
+  t.textContent = text;
+  t.classList.add('show');
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+/* ============================== sound engine (all synthesized) ============================== */
+const sfx = {
+  ctx: null, master: null, muted: false,
+
+  init(){
+    if(this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    this.ctx = new AC();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.85;
+    this.master.connect(this.ctx.destination);
+    this.startAmbient();
+    // gentle random space chimes
+    setInterval(() => { if(!this.muted && Math.random() < 0.65) this.twinkle(); }, 12000);
+  },
+  resume(){ if(this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+  setMuted(m){
+    this.muted = m;
+    if(this.master) this.master.gain.value = m ? 0 : 0.85;
+    if(m && 'speechSynthesis' in window) speechSynthesis.cancel();
+  },
+
+  startAmbient(){
+    const c = this.ctx;
+    const g = c.createGain(); g.gain.value = 0.035; g.connect(this.master);
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320; lp.connect(g);
+    const o1 = c.createOscillator(); o1.type = 'sine'; o1.frequency.value = 55;
+    const o2 = c.createOscillator(); o2.type = 'triangle'; o2.frequency.value = 82.4; o2.detune.value = 6;
+    o1.connect(lp); o2.connect(lp); o1.start(); o2.start();
+    // slow breathing volume
+    const lfo = c.createOscillator(); lfo.frequency.value = 0.06;
+    const lfoG = c.createGain(); lfoG.gain.value = 0.018;
+    lfo.connect(lfoG); lfoG.connect(g.gain); lfo.start();
+  },
+
+  _noise(dur){
+    const c = this.ctx;
+    const buf = c.createBuffer(1, c.sampleRate * dur, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = c.createBufferSource(); src.buffer = buf;
+    return src;
+  },
+  _tone(type, freq, t0, dur, vol, freqEnd){
+    const c = this.ctx;
+    const o = c.createOscillator(); o.type = type;
+    o.frequency.setValueAtTime(freq, t0);
+    if(freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, t0 + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(this.master);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  },
+
+  blip(){ if(!this.ctx) return; this._tone('triangle', 520, this.ctx.currentTime, 0.09, 0.22, 900); },
+
+  whoosh(){
+    if(!this.ctx) return;
+    const c = this.ctx, t0 = c.currentTime;
+    const src = this._noise(1.4);
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.2;
+    bp.frequency.setValueAtTime(160, t0);
+    bp.frequency.exponentialRampToValueAtTime(1900, t0 + 0.5);
+    bp.frequency.exponentialRampToValueAtTime(220, t0 + 1.35);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.5, t0 + 0.35);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.4);
+    src.connect(bp); bp.connect(g); g.connect(this.master);
+    src.start(t0); src.stop(t0 + 1.45);
+  },
+
+  launch(){
+    if(!this.ctx) return;
+    const c = this.ctx, t0 = c.currentTime;
+    // rumble
+    const src = this._noise(2.6);
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(120, t0);
+    lp.frequency.exponentialRampToValueAtTime(900, t0 + 2.2);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.55, t0 + 0.4);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.6);
+    src.connect(lp); lp.connect(g); g.connect(this.master);
+    src.start(t0); src.stop(t0 + 2.7);
+    // rising engine tone
+    this._tone('sawtooth', 70, t0, 2.4, 0.10, 420);
+  },
+
+  ding(){
+    if(!this.ctx) return;
+    const t0 = this.ctx.currentTime;
+    this._tone('sine', 880, t0, 0.5, 0.25);
+    this._tone('sine', 1318.5, t0 + 0.09, 0.6, 0.2);
+  },
+
+  twinkle(){
+    if(!this.ctx) return;
+    const notes = [880, 987.8, 1174.7, 1318.5, 1568];
+    const t0 = this.ctx.currentTime;
+    const n1 = notes[Math.floor(Math.random() * notes.length)];
+    this._tone('sine', n1, t0, 0.9, 0.05);
+    this._tone('sine', n1 * 1.5, t0 + 0.18, 0.9, 0.035);
+  },
+
+  fanfare(){
+    if(!this.ctx) return;
+    const t0 = this.ctx.currentTime;
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+      this._tone('triangle', f, t0 + i * 0.13, 0.32, 0.22);
+      this._tone('sine', f * 2, t0 + i * 0.13, 0.3, 0.07);
+    });
+    this._tone('triangle', 1318.5, t0 + 0.55, 0.7, 0.18);
+  },
+
+  pop(){
+    if(!this.ctx) return;
+    const c = this.ctx, t0 = c.currentTime;
+    const src = this._noise(0.25);
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1200;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.3, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+    src.connect(hp); hp.connect(g); g.connect(this.master);
+    src.start(t0); src.stop(t0 + 0.26);
+  }
+};
+
+/* Pick the most natural-sounding English voice the device offers.
+   Edge exposes "... Online (Natural)" neural voices, macOS/iOS have
+   Siri/Premium/Enhanced voices, Chrome has "Google ..." voices — all far
+   more fluent than the default. */
+let pickedVoice = null;
+function scoreVoice(v){
+  if(!/^en([-_]|$)/i.test(v.lang)) return -1;
+  let s = 0;
+  const n = v.name;
+  if(/Online \(Natural\)/i.test(n)) s += 60;
+  else if(/Natural|Neural/i.test(n)) s += 50;
+  if(/Premium/i.test(n)) s += 40;
+  if(/Enhanced/i.test(n)) s += 30;
+  if(/Siri/i.test(n)) s += 25;
+  if(/Google/i.test(n)) s += 20;
+  if(/\b(Ana|Aria|Jenny|Samantha|Ava|Zoe|Libby|Sonia)\b/i.test(n)) s += 8; // warm, kid-friendly
+  if(/en[-_](US|GB)/i.test(v.lang)) s += 4;
+  if(v.default) s += 2;
+  return s;
+}
+function pickVoice(){
+  const voices = speechSynthesis.getVoices();
+  if(!voices.length) return;
+  const best = voices.reduce((a, b) => scoreVoice(b) > scoreVoice(a) ? b : a, voices[0]);
+  pickedVoice = scoreVoice(best) >= 0 ? best : null;
+}
+if('speechSynthesis' in window){
+  pickVoice();
+  speechSynthesis.onvoiceschanged = pickVoice;   // voices often arrive async
+}
+
+function speak(text){
+  if(sfx.muted || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const clean = text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{2B00}-\u{2BFF}]/gu, '');
+  // speak sentence by sentence: sounds more natural and avoids Chrome
+  // cutting off long utterances on remote voices
+  const chunks = (clean.match(/[^.!?]+[.!?]+\s*|[^.!?]+$/g) || [clean])
+    .map(c => c.trim()).filter(Boolean);
+  for(const chunk of chunks){
+    const u = new SpeechSynthesisUtterance(chunk);
+    if(pickedVoice) u.voice = pickedVoice;
+    else u.lang = 'en-US';
+    u.rate = 0.95; u.pitch = 1.05;
+    speechSynthesis.speak(u);
+  }
+}
+
+/* ============================== the worlds ============================== */
+// Sizes/distances are stylized (real space is far too empty to show on one screen).
+const BODIES = [
+  { id:'sun', name:'The Sun', emoji:'☀️', tag:'Our very own star!',
+    radius:16, dist:0, period:0, spin:0.02, tilt:0, viewDist:52,
+    facts:[
+      ['🔥','The Sun is a star — a gigantic ball of super-hot glowing gas.'],
+      ['🌍','About one MILLION Earths could fit inside the Sun!'],
+      ['⚡','Sunlight zooms all the way to Earth in just 8 minutes.']
+    ],
+    fun:'Never look straight at the real Sun — it is far too bright for your eyes!' },
+
+  { id:'mercury', name:'Mercury', emoji:'🪨', tag:'The smallest, speediest planet!',
+    radius:1.0, dist:42, period:0.24, spin:0.1, tilt:0.03, viewDist:6,
+    map:'mercury', bump:'mercurybump',
+    facts:[
+      ['🏃','Mercury races around the Sun faster than any other planet — one year lasts only 88 days!'],
+      ['🕳️','It is covered in craters, just like our Moon.'],
+      ['🌡️','Daytime is scorching hot and nighttime is freezing cold — it has almost no air.']
+    ],
+    fun:'Even though it is closest to the Sun, Mercury is NOT the hottest planet. Venus is!' },
+
+  { id:'venus', name:'Venus', emoji:'🟡', tag:'The hottest planet of all!',
+    radius:1.65, dist:56, period:0.62, spin:-0.03, tilt:177, viewDist:8,
+    map:'venus', bump:'venusbump',
+    facts:[
+      ['🌡️','Venus is the hottest planet — hot enough to melt some metals!'],
+      ['☁️','Thick yellow clouds wrap around it like a big (very stinky) blanket.'],
+      ['🔄','Venus spins backwards! There, the Sun rises in the west.']
+    ],
+    fun:'Venus shines so brightly that we can see it from Earth. People call it the Evening Star.' },
+
+  { id:'earth', name:'Earth', emoji:'🌍', tag:'Our beautiful home!',
+    radius:1.75, dist:70, period:1, spin:0.5, tilt:23.5, viewDist:8.5,
+    map:'earth', bump:'earthbump', spec:'earthspec', clouds:true, atmosphere:true,
+    facts:[
+      ['💧','Earth is the only world we know with oceans, animals and people!'],
+      ['🌬️','Its air and water make it just right for life.'],
+      ['🌀','Earth spins around once every 24 hours — that makes one whole day.']
+    ],
+    fun:'Astronauts say that from space, Earth looks like a beautiful blue marble.' },
+
+  { id:'moon', name:'The Moon', emoji:'🌕', tag:"Earth's best friend!",
+    radius:0.48, dist:4.6, period:0.075, spin:0.04, tilt:1.5, viewDist:3, parent:'earth',
+    map:'moon', bump:'moonbump',
+    facts:[
+      ['👣','Astronauts walked on the Moon in 1969 — their footprints are still there!'],
+      ['🌊','The Moon pulls on our oceans and makes the tides go up and down.'],
+      ['🕳️','It has no air, so nothing ever blows away — not even flags.']
+    ],
+    fun:'The Moon drifts away from Earth a tiny bit every year — about as fast as your fingernails grow!' },
+
+  { id:'mars', name:'Mars', emoji:'🔴', tag:'The rusty red planet!',
+    radius:1.25, dist:86, period:1.88, spin:0.48, tilt:25, viewDist:6.5,
+    map:'mars', bump:'marsbump',
+    facts:[
+      ['🤖','Robot rovers are driving around on Mars RIGHT NOW, hunting for clues about water.'],
+      ['🌋','Mars has the biggest volcano in the whole solar system — Olympus Mons!'],
+      ['🔴','It looks red because its dust is rusty, like an old bicycle.']
+    ],
+    fun:'Mars has two tiny potato-shaped moons called Phobos and Deimos.' },
+
+  { id:'jupiter', name:'Jupiter', emoji:'🟠', tag:'The giant king of planets!',
+    radius:7, dist:122, period:11.86, spin:1.1, tilt:3, viewDist:27,
+    map:'jupiter',
+    facts:[
+      ['👑','Jupiter is the BIGGEST planet — more than 1,000 Earths could fit inside!'],
+      ['🌀','Its Great Red Spot is a storm bigger than Earth that has raged for hundreds of years.'],
+      ['💨','It spins super fast — one whole day lasts only 10 hours.']
+    ],
+    fun:'Jupiter has more than 90 moons — it is like its own mini solar system!' },
+
+  { id:'saturn', name:'Saturn', emoji:'🪐', tag:'The planet with amazing rings!',
+    radius:6, dist:152, period:29.5, spin:1.0, tilt:26.7, viewDist:31,
+    map:'saturn', rings:{ inner:7.6, outer:13, map:'saturnring', alpha:'saturnringalpha' },
+    facts:[
+      ['💍','Saturn\'s beautiful rings are made of billions of chunks of ice and rock.'],
+      ['🛁','Saturn is so light that it could float in a giant bathtub!'],
+      ['🌙','It has more than 140 moons — one of them, Titan, has orange clouds.']
+    ],
+    fun:'The rings are HUGE but super thin — in places, thinner than a house is tall.' },
+
+  { id:'uranus', name:'Uranus', emoji:'🟢', tag:'The sideways planet!',
+    radius:3.1, dist:180, period:84, spin:0.45, tilt:98, viewDist:13,
+    map:'uranus', rings:{ inner:4.2, outer:5.4, map:'uranusring', alpha:'uranusringalpha', faint:true },
+    facts:[
+      ['🤸','Uranus is tipped right over — it rolls around the Sun on its side!'],
+      ['🥶','It is an ice giant and one of the coldest planets.'],
+      ['💨','Its air would smell like rotten eggs. Pee-yew!']
+    ],
+    fun:'Uranus was the very first planet ever discovered with a telescope.' },
+
+  { id:'neptune', name:'Neptune', emoji:'🔵', tag:'The wild, windy blue planet!',
+    radius:3.0, dist:204, period:164.8, spin:0.5, tilt:28, viewDist:13,
+    map:'neptune',
+    facts:[
+      ['💨','Neptune has the fastest winds in the solar system — faster than a jet plane!'],
+      ['📏','It is the farthest planet from the Sun.'],
+      ['🗓️','One year on Neptune lasts 165 Earth years!']
+    ],
+    fun:'Neptune looks deep blue because of a gas called methane in its air.' },
+
+  { id:'pluto', name:'Pluto', emoji:'🤍', tag:'The little dwarf planet with a heart!',
+    radius:0.6, dist:226, period:248, spin:0.08, tilt:120, viewDist:3.4, inclined:0.22,
+    map:'pluto', bump:'plutobump',
+    facts:[
+      ['❤️','Pluto has a giant heart shape on its surface, made of ice!'],
+      ['🐭','It is even smaller than our Moon.'],
+      ['🧊','It is SO far away that from Pluto, the Sun looks like a tiny bright star.']
+    ],
+    fun:'Pluto used to be called the ninth planet. Now it is the most famous dwarf planet!' }
+];
+const bodyById = {}; BODIES.forEach(b => bodyById[b.id] = b);
+
+const MISSIONS = [
+  { target:'earth',   text:'Find the planet we live on!',                     hint:'It is blue with white swirly clouds.' },
+  { target:'mars',    text:'Find the RED planet!',                            hint:'Robots are driving on it right now.' },
+  { target:'saturn',  text:'Find the planet with giant RINGS!',               hint:'Its rings are made of sparkling ice.' },
+  { target:'jupiter', text:'Find the BIGGEST planet of all!',                 hint:'Look for the giant with a big red storm spot.' },
+  { target:'mercury', text:'Find the smallest planet, closest to the Sun!',   hint:'It is grey and covered in craters.' },
+  { target:'venus',   text:'Find the HOTTEST planet!',                        hint:'It hides under thick yellow clouds.' },
+  { target:'moon',    text:"Find the Moon — Earth's best friend!",            hint:'Look very close to the blue planet.' },
+  { target:'uranus',  text:'Find the planet that rolls on its side!',         hint:'It is a pale blue-green ice giant.' },
+  { target:'neptune', text:'Find the WINDIEST planet!',                       hint:'It is deep blue and very far from the Sun.' },
+  { target:'pluto',   text:'Find the tiny dwarf planet with a heart!',        hint:'It is the farthest little world out there.' },
+  { target:'sun',     text:'Last mission: visit our star, the Sun!',          hint:'You cannot miss it — it is glowing!' }
+];
+
+/* ============================== textures ============================== */
+const TEX_BASE = 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/';
+const TEX_DEFS = {
+  sun:            { f:'sunmap.jpg',            color:true },
+  mercury:        { f:'mercurymap.jpg',        color:true },
+  mercurybump:    { f:'mercurybump.jpg' },
+  venus:          { f:'venusmap.jpg',          color:true },
+  venusbump:      { f:'venusbump.jpg' },
+  earth:          { f:'earthmap1k.jpg',        color:true },
+  earthbump:      { f:'earthbump1k.jpg' },
+  earthspec:      { f:'earthspec1k.jpg' },
+  clouds:         { f:'earthcloudmap.jpg',     color:true },
+  moon:           { f:'moonmap1k.jpg',         color:true },
+  moonbump:       { f:'moonbump1k.jpg' },
+  mars:           { f:'marsmap1k.jpg',         color:true },
+  marsbump:       { f:'marsbump1k.jpg' },
+  jupiter:        { f:'jupitermap.jpg',        color:true },
+  saturn:         { f:'saturnmap.jpg',         color:true },
+  saturnring:     { f:'saturnringcolor.jpg',   color:true },
+  saturnringalpha:{ f:'saturnringpattern.gif' },
+  uranus:         { f:'uranusmap.jpg',         color:true },
+  uranusring:     { f:'uranusringcolour.jpg',  color:true },
+  uranusringalpha:{ f:'uranusringtrans.gif' },
+  neptune:        { f:'neptunemap.jpg',        color:true },
+  pluto:          { f:'plutomap1k.jpg',        color:true },
+  plutobump:      { f:'plutobump1k.jpg' },
+  galaxy:         { f:'galaxy_starfield.png',  color:true }
+};
+// Fallback paint colors if we're offline: [top, bottom, style]
+const FALLBACKS = {
+  sun:['#ffe28a','#ff9500','bands'], mercury:['#a89a8a','#6e635a','rock'],
+  venus:['#f0d9a0','#c89b52','bands'], earth:['#3a7bd5','#1c4d2e','rock'],
+  clouds:['#000000','#222222','rock'], moon:['#cfcfcf','#8a8a8a','rock'],
+  mars:['#d97b4f','#8a3f24','rock'], jupiter:['#d9b48a','#a06a3f','bands'],
+  saturn:['#e8cf9e','#b89355','bands'], saturnring:['#d9c49a','#7a6a4a','bands'],
+  uranus:['#9fe3e0','#5fb8bc','plain'], uranusring:['#bcd','#89a','plain'],
+  neptune:['#4f7bd9','#24418a','bands'], pluto:['#d9c9b4','#8a7a64','rock'],
+  galaxy:['#05060f','#0a0d22','stars'],
+  mercurybump:['#888','#555','rock'], venusbump:['#888','#555','rock'],
+  earthbump:['#888','#555','rock'], earthspec:['#333','#111','plain'],
+  moonbump:['#888','#555','rock'], marsbump:['#888','#555','rock'],
+  plutobump:['#888','#555','rock'],
+  saturnringalpha:['#ffffff','#999999','bands'], uranusringalpha:['#cccccc','#888888','plain']
+};
+
+function proceduralTexture(key){
+  const [a, b, style] = FALLBACKS[key] || ['#888', '#555', 'rock'];
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, a); g.addColorStop(1, b);
+  x.fillStyle = g; x.fillRect(0, 0, 512, 256);
+  if(style === 'bands'){
+    for(let i = 0; i < 16; i++){
+      x.fillStyle = 'rgba(' + (Math.random() < 0.5 ? '255,255,255' : '0,0,0') + ',' + (Math.random() * 0.12).toFixed(3) + ')';
+      const y = Math.random() * 256, h = 5 + Math.random() * 22;
+      x.fillRect(0, y, 512, h);
+    }
+  } else if(style === 'rock'){
+    for(let i = 0; i < 900; i++){
+      x.fillStyle = 'rgba(' + (Math.random() < 0.5 ? '0,0,0' : '255,255,255') + ',' + (Math.random() * 0.1).toFixed(3) + ')';
+      x.beginPath();
+      x.arc(Math.random() * 512, Math.random() * 256, Math.random() * 4 + 0.5, 0, 7);
+      x.fill();
+    }
+  } else if(style === 'stars'){
+    for(let i = 0; i < 500; i++){
+      x.fillStyle = 'rgba(255,255,255,' + (Math.random() * 0.8).toFixed(2) + ')';
+      x.fillRect(Math.random() * 512, Math.random() * 256, 1, 1);
+    }
+  }
+  return new THREE.CanvasTexture(c);
+}
+
+const TEX = {};
+let texLoaded = 0;
+const texTotal = Object.keys(TEX_DEFS).length;
+function updateProgress(){
+  texLoaded++;
+  const pct = Math.round(texLoaded / texTotal * 100);
+  $('loadFill').style.width = pct + '%';
+  $('loadStatus').textContent = 'Loading planets… ' + pct + '%';
+}
+function loadTex(key, def){
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = tex => {
+      if(settled) return;
+      settled = true;
+      if(def.color) tex.colorSpace = THREE.SRGBColorSpace;
+      TEX[key] = tex;
+      updateProgress();
+      resolve();
+    };
+    new THREE.TextureLoader().load(TEX_BASE + def.f, finish, undefined, () => finish(proceduralTexture(key)));
+    setTimeout(() => finish(proceduralTexture(key)), 20000); // never hang forever
+  });
+}
+
+/* ============================== three.js setup ============================== */
+let renderer;
+try{
+  renderer = new THREE.WebGLRenderer({ antialias:true });
+}catch(err){
+  $('loadStatus').innerHTML = '😢 This device could not start 3D graphics.<br>Try a different browser (like Chrome or Safari) and reload!';
+  $('loadFill').style.width = '0%';
+  throw err;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+$('app').appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(window.innerWidth, window.innerHeight);
+$('labels').appendChild(labelRenderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.5, 9000);
+camera.position.set(0, 260, 900);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.enablePan = false;           // keeps young explorers from getting lost
+controls.minDistance = 3;
+controls.maxDistance = 800;
+controls.autoRotate = true;           // gentle drift until the first touch
+controls.autoRotateSpeed = 0.35;
+controls.addEventListener('start', () => { controls.autoRotate = false; });
+
+scene.add(new THREE.AmbientLight(0x404060, 0.5));
+const sunLight = new THREE.PointLight(0xfff1d6, 3.2, 0, 0);
+scene.add(sunLight);
+
+/* ============================== scene building ============================== */
+const pickables = [];
+let sunGlow1, sunGlow2, beltGroup, earthClouds;
+
+function glowTexture(){
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+  g.addColorStop(0, 'rgba(255,244,200,1)');
+  g.addColorStop(0.3, 'rgba(255,190,80,0.55)');
+  g.addColorStop(1, 'rgba(255,120,0,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(c);
+}
+
+function makeRadialRing(inner, outer, map, alpha, opacity){
+  const geo = new THREE.RingGeometry(inner, outer, 160, 1);
+  const pos = geo.attributes.position, v = new THREE.Vector3();
+  for(let i = 0; i < pos.count; i++){
+    v.fromBufferAttribute(pos, i);
+    geo.attributes.uv.setXY(i, (v.length() - inner) / (outer - inner), 0.5);
+  }
+  const mat = new THREE.MeshLambertMaterial({
+    map, alphaMap: alpha, transparent: true, opacity,
+    side: THREE.DoubleSide, depthWrite: false, alphaTest: 0.02
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  return mesh;
+}
+
+const ATMO_VERT = `
+  varying vec3 vNormal;
+  void main(){
+    vNormal = normalize(normalMatrix * normal);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }`;
+const ATMO_FRAG = `
+  varying vec3 vNormal;
+  void main(){
+    float intensity = pow(0.68 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.2);
+    gl_FragColor = vec4(0.35, 0.6, 1.0, 1.0) * intensity;
+  }`;
+
+function buildScene(){
+  // --- galaxy background + stars ---
+  const galaxy = new THREE.Mesh(
+    new THREE.SphereGeometry(3400, 32, 32),
+    new THREE.MeshBasicMaterial({ map: TEX.galaxy, side: THREE.BackSide, color: 0x9a9ab8 })
+  );
+  scene.add(galaxy);
+
+  const starGeo = new THREE.BufferGeometry();
+  const N = 6000, posArr = new Float32Array(N * 3), colArr = new Float32Array(N * 3);
+  const starCol = new THREE.Color();
+  for(let i = 0; i < N; i++){
+    const r = rand(1400, 2800);
+    const th = Math.acos(rand(-1, 1)), ph = rand(0, Math.PI * 2);
+    posArr[i*3]   = r * Math.sin(th) * Math.cos(ph);
+    posArr[i*3+1] = r * Math.cos(th);
+    posArr[i*3+2] = r * Math.sin(th) * Math.sin(ph);
+    const k = Math.random();
+    if(k < 0.7) starCol.setHSL(0.62, 0.1, rand(0.7, 1));
+    else if(k < 0.85) starCol.setHSL(0.6, 0.6, rand(0.7, 0.95));
+    else starCol.setHSL(0.09, 0.7, rand(0.7, 0.95));
+    colArr[i*3] = starCol.r; colArr[i*3+1] = starCol.g; colArr[i*3+2] = starCol.b;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+  starGeo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
+    size: 2.2, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.95, depthWrite: false
+  })));
+
+  // --- bodies ---
+  for(const body of BODIES){
+    const holder = new THREE.Group();          // sits at the body's position
+    body.holder = holder;
+    body.angle = rand(0, Math.PI * 2);
+
+    let parentGroup = scene;
+    if(body.parent){
+      parentGroup = bodyById[body.parent].holder;
+    } else if(body.inclined){
+      const inc = new THREE.Group();
+      inc.rotation.x = body.inclined;
+      scene.add(inc);
+      parentGroup = inc;
+    }
+    parentGroup.add(holder);
+    body.orbitParent = parentGroup;
+
+    const spinGroup = new THREE.Group();       // carries the axial tilt
+    spinGroup.rotation.z = THREE.MathUtils.degToRad(body.tilt || 0);
+    holder.add(spinGroup);
+    body.spinGroup = spinGroup;
+
+    let mesh;
+    if(body.id === 'sun'){
+      mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(body.radius, 64, 48),
+        new THREE.MeshBasicMaterial({ map: TEX.sun, toneMapped: false })
+      );
+      const glowMat1 = new THREE.SpriteMaterial({ map: glowTexture(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+      sunGlow1 = new THREE.Sprite(glowMat1); sunGlow1.scale.setScalar(70);
+      const glowMat2 = glowMat1.clone(); glowMat2.opacity = 0.35;
+      sunGlow2 = new THREE.Sprite(glowMat2); sunGlow2.scale.setScalar(120);
+      holder.add(sunGlow1, sunGlow2);
+    } else {
+      const matOpts = { map: TEX[body.map], shininess: 8 };
+      if(body.bump){ matOpts.bumpMap = TEX[body.bump]; matOpts.bumpScale = 0.08; }
+      if(body.spec){ matOpts.specularMap = TEX[body.spec]; matOpts.specular = new THREE.Color(0x444444); matOpts.shininess = 14; }
+      mesh = new THREE.Mesh(new THREE.SphereGeometry(body.radius, 64, 48), new THREE.MeshPhongMaterial(matOpts));
+    }
+    mesh.userData.bodyId = body.id;
+    spinGroup.add(mesh);
+    body.mesh = mesh;
+    pickables.push(mesh);
+
+    // invisible bigger pick target so little fingers can tap small planets
+    if(body.radius < 3){
+      const pick = new THREE.Mesh(
+        new THREE.SphereGeometry(Math.max(body.radius * 2.4, 2.6), 8, 8),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      pick.userData.bodyId = body.id;
+      holder.add(pick);
+      pickables.push(pick);
+    }
+
+    if(body.clouds){
+      earthClouds = new THREE.Mesh(
+        new THREE.SphereGeometry(body.radius * 1.02, 64, 48),
+        new THREE.MeshLambertMaterial({ map: TEX.clouds, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })
+      );
+      earthClouds.userData.bodyId = body.id;
+      spinGroup.add(earthClouds);
+      pickables.push(earthClouds);
+    }
+
+    if(body.atmosphere){
+      const atmo = new THREE.Mesh(
+        new THREE.SphereGeometry(body.radius * 1.18, 48, 32),
+        new THREE.ShaderMaterial({
+          vertexShader: ATMO_VERT, fragmentShader: ATMO_FRAG,
+          side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false
+        })
+      );
+      spinGroup.add(atmo);
+    }
+
+    if(body.rings){
+      const r = body.rings;
+      const ring = makeRadialRing(r.inner, r.outer, TEX[r.map], TEX[r.alpha], r.faint ? 0.4 : 1.0);
+      ring.userData.bodyId = body.id;
+      spinGroup.add(ring);
+      pickables.push(ring);
+    }
+
+    // orbit line
+    if(body.dist > 0){
+      const lineGeo = new THREE.RingGeometry(body.dist - 0.09, body.dist + 0.09, 256);
+      const line = new THREE.Mesh(lineGeo, new THREE.MeshBasicMaterial({
+        color: 0x6688cc, transparent: true, opacity: body.parent ? 0.25 : 0.16,
+        side: THREE.DoubleSide, depthWrite: false
+      }));
+      line.rotation.x = -Math.PI / 2;
+      body.orbitParent.add(line);
+    }
+
+    // floating name label
+    const el = document.createElement('div');
+    el.className = 'plabel';
+    el.textContent = body.emoji + ' ' + body.name;
+    el.addEventListener('click', e => { e.stopPropagation(); visit(body); });
+    const label = new CSS2DObject(el);
+    label.position.set(0, body.radius * 1.6 + 1.4, 0);
+    holder.add(label);
+    body.labelEl = el;
+
+    updateBodyPosition(body);
+  }
+
+  // --- asteroid belt ---
+  beltGroup = new THREE.Group();
+  const rockGeo = new THREE.DodecahedronGeometry(0.28, 0);
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x93856f, roughness: 0.95 });
+  const COUNT = 650;
+  const belt = new THREE.InstancedMesh(rockGeo, rockMat, COUNT);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s = new THREE.Vector3();
+  for(let i = 0; i < COUNT; i++){
+    const a = rand(0, Math.PI * 2), r = rand(98, 110);
+    const p = V3(Math.cos(a) * r, rand(-1.6, 1.6), Math.sin(a) * r);
+    e.set(rand(0, 6), rand(0, 6), rand(0, 6)); q.setFromEuler(e);
+    s.setScalar(rand(0.3, 1.7));
+    m.compose(p, q, s);
+    belt.setMatrixAt(i, m);
+  }
+  beltGroup.add(belt);
+  scene.add(beltGroup);
+}
+
+function updateBodyPosition(body){
+  if(body.dist > 0){
+    body.holder.position.set(Math.cos(body.angle) * body.dist, 0, Math.sin(body.angle) * body.dist);
+  }
+}
+
+function worldPos(body, out){
+  return body.holder.getWorldPosition(out || new THREE.Vector3());
+}
+
+/* ============================== shooting stars ============================== */
+const shootingStars = [];
+let nextShootingStar = 5;
+function spawnShootingStar(){
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+  const mat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+  const line = new THREE.Line(geo, mat);
+  const th = Math.acos(rand(-0.4, 0.9)), ph = rand(0, Math.PI * 2), r = rand(700, 1100);
+  const p = V3(r * Math.sin(th) * Math.cos(ph), r * Math.cos(th), r * Math.sin(th) * Math.sin(ph));
+  const dir = V3(rand(-1, 1), rand(-0.6, 0.1), rand(-1, 1)).normalize();
+  scene.add(line);
+  shootingStars.push({ line, p, dir, t: 0, life: rand(1.1, 1.7), speed: rand(500, 800) });
+  sfx.twinkle();
+}
+function updateShootingStars(dt){
+  for(let i = shootingStars.length - 1; i >= 0; i--){
+    const st = shootingStars[i];
+    st.t += dt;
+    st.p.addScaledVector(st.dir, st.speed * dt);
+    const tail = st.p.clone().addScaledVector(st.dir, -55);
+    const arr = st.line.geometry.attributes.position.array;
+    arr[0] = st.p.x; arr[1] = st.p.y; arr[2] = st.p.z;
+    arr[3] = tail.x; arr[4] = tail.y; arr[5] = tail.z;
+    st.line.geometry.attributes.position.needsUpdate = true;
+    st.line.material.opacity = Math.sin(Math.PI * Math.min(1, st.t / st.life)) * 0.9;
+    if(st.t >= st.life){
+      scene.remove(st.line);
+      st.line.geometry.dispose(); st.line.material.dispose();
+      shootingStars.splice(i, 1);
+    }
+  }
+}
+
+/* ============================== camera flights & following ============================== */
+let flight = null;
+let follow = null;
+
+function startFlight(dur, getEnds, onDone){
+  flight = {
+    t: 0, dur, getEnds, onDone,
+    fromCam: camera.position.clone(),
+    fromTarget: controls.target.clone()
+  };
+  controls.enabled = false;
+  controls.autoRotate = false;
+}
+
+function updateFlight(dt){
+  if(flight){
+    flight.t += dt;
+    const k = smooth(Math.min(1, flight.t / flight.dur));
+    const ends = flight.getEnds();
+    camera.position.lerpVectors(flight.fromCam, ends.cam, k);
+    controls.target.lerpVectors(flight.fromTarget, ends.tgt, k);
+    if(flight.t >= flight.dur){
+      const f = flight;
+      flight = null;
+      controls.enabled = true;
+      if(f.onDone) f.onDone();
+    }
+  } else if(follow){
+    const p = worldPos(follow.body);
+    const delta = p.clone().sub(follow.prev);
+    camera.position.add(delta);
+    controls.target.add(delta);
+    follow.prev.copy(p);
+  }
+}
+
+function flyToBody(body){
+  follow = null;
+  const dist = body.viewDist || body.radius * 4.5;
+  startFlight(1.9, () => {
+    const p = worldPos(body);
+    let dir;
+    if(body.id === 'sun'){
+      dir = camera.position.clone().sub(p); dir.y = 0;
+      if(dir.lengthSq() < 1) dir.set(1, 0, 1);
+      dir.normalize().multiplyScalar(-1);   // keep camera on its current side
+    } else {
+      dir = p.clone(); dir.y = 0; dir.normalize();
+    }
+    const cam = p.clone().addScaledVector(dir, -dist);
+    cam.y += dist * 0.42;
+    return { cam, tgt: p };
+  }, () => {
+    follow = { body, prev: worldPos(body) };
+  });
+  sfx.whoosh();
+}
+
+function goOverview(){
+  follow = null;
+  closeCard();
+  startFlight(1.7, () => ({ cam: V3(0, 120, 330), tgt: V3(0, 0, 0) }));
+  sfx.whoosh();
+}
+
+/* ============================== visiting, passport, missions ============================== */
+let visited = new Set();
+let missionIdx = 0;
+try{
+  visited = new Set(JSON.parse(localStorage.getItem('solar-passport-v1') || '[]'));
+  missionIdx = parseInt(localStorage.getItem('solar-mission-v1') || '0', 10) || 0;
+}catch(e){ /* private mode etc. */ }
+
+function saveProgress(){
+  try{
+    localStorage.setItem('solar-passport-v1', JSON.stringify([...visited]));
+    localStorage.setItem('solar-mission-v1', String(missionIdx));
+  }catch(e){}
+}
+
+function updatePassportUI(){
+  $('passportBtn').textContent = '🛂 ' + visited.size + '/' + BODIES.length;
+  for(const b of BODIES){
+    const cell = document.getElementById('stamp-' + b.id);
+    if(cell) cell.classList.toggle('got', visited.has(b.id));
+    const nav = document.getElementById('nav-' + b.id);
+    if(nav) nav.classList.toggle('visited', visited.has(b.id));
+  }
+}
+
+function markVisited(body){
+  if(visited.has(body.id)) return;
+  visited.add(body.id);
+  saveProgress();
+  updatePassportUI();
+  sfx.ding();
+  showToast('🛂 New passport stamp: ' + body.emoji + ' ' + body.name + '!');
+  if(visited.size === BODIES.length){
+    setTimeout(() => {
+      confetti(220);
+      sfx.fanfare();
+      showToast('🏆 PASSPORT COMPLETE! You visited EVERY world! Amazing!', 5000);
+      speak('Wow! Your passport is complete! You visited every single world. You are an amazing space explorer!');
+    }, 1200);
+  }
+}
+
+function currentMission(){ return missionIdx < MISSIONS.length ? MISSIONS[missionIdx] : null; }
+
+function renderMission(){
+  const m = currentMission();
+  const box = $('mission');
+  box.style.display = 'block';
+  if(m){
+    $('missionTitle').textContent = '🎯 SPACE MISSION ' + (missionIdx + 1) + ' of ' + MISSIONS.length;
+    $('missionText').textContent = m.text;
+    $('missionHint').textContent = '💡 Hint: ' + m.hint;
+    $('missionSkip').style.display = '';
+  } else {
+    $('missionTitle').textContent = '🏆 ALL MISSIONS COMPLETE';
+    $('missionText').textContent = 'You are a real SPACE CAPTAIN! Keep exploring!';
+    $('missionHint').textContent = '';
+    $('missionSkip').style.display = 'none';
+  }
+}
+
+function missionCheck(body){
+  const m = currentMission();
+  if(!m) return;
+  if(body.id === m.target){
+    confetti(160);
+    sfx.fanfare();
+    $('missionTitle').textContent = '🎉 MISSION COMPLETE!';
+    $('missionText').textContent = 'You found ' + body.name + '! Amazing, Captain!';
+    $('missionHint').textContent = '';
+    speak('Mission complete! You found ' + body.name + '! Amazing job, Space Explorer!');
+    missionIdx++;
+    saveProgress();
+    setTimeout(renderMission, 3200);
+  } else {
+    showToast('🔭 Great exploring! But the mission needs another world. Hint: ' + m.hint, 3600);
+  }
+}
+
+function visit(body){
+  sfx.blip();
+  flyToBody(body);
+  openCard(body);
+  markVisited(body);
+  missionCheck(body);
+  setTimeout(() => speak(body.name + '!'), 1200);
+}
+
+/* ============================== info card ============================== */
+let cardBody = null;
+function openCard(body){
+  cardBody = body;
+  $('cardEmoji').textContent = body.emoji;
+  $('cardName').textContent = body.name;
+  $('cardTag').textContent = body.tag;
+  $('cardFacts').innerHTML = '';
+  for(const [icon, text] of body.facts){
+    const div = document.createElement('div');
+    div.className = 'fact';
+    const fi = document.createElement('span'); fi.className = 'fi'; fi.textContent = icon;
+    const ft = document.createElement('span'); ft.textContent = text;
+    div.append(fi, ft);
+    $('cardFacts').appendChild(div);
+  }
+  $('cardFun').innerHTML = '<b>✨ Did you know?</b> ';
+  $('cardFun').append(body.fun);
+  $('stampNote').textContent = visited.has(body.id) ? '🛂 Stamped!' : '';
+  $('card').style.display = 'block';
+}
+function closeCard(){
+  $('card').style.display = 'none';
+  cardBody = null;
+  if('speechSynthesis' in window) speechSynthesis.cancel();
+}
+
+$('cardClose').addEventListener('click', () => { sfx.blip(); closeCard(); });
+$('sayBtn').addEventListener('click', () => {
+  if(!cardBody) return;
+  sfx.blip();
+  speak(cardBody.name + '. ' + cardBody.tag + ' ' +
+        cardBody.facts.map(f => f[1]).join(' ') +
+        ' And did you know? ' + cardBody.fun);
+});
+$('prevBtn').addEventListener('click', () => {
+  if(!cardBody) return;
+  const i = BODIES.indexOf(cardBody);
+  visit(BODIES[(i - 1 + BODIES.length) % BODIES.length]);
+});
+$('nextBtn').addEventListener('click', () => {
+  if(!cardBody) return;
+  const i = BODIES.indexOf(cardBody);
+  visit(BODIES[(i + 1) % BODIES.length]);
+});
+
+/* ============================== confetti ============================== */
+const confCanvas = $('confetti');
+const cctx = confCanvas.getContext('2d');
+let confPieces = [], confRunning = false;
+const CONF_COLORS = ['#ff5c7a', '#ffb347', '#7dffa1', '#7cc4ff', '#c48aff', '#fff36e'];
+function confetti(n){
+  confCanvas.width = window.innerWidth;
+  confCanvas.height = window.innerHeight;
+  for(let i = 0; i < n; i++){
+    confPieces.push({
+      x: window.innerWidth / 2, y: window.innerHeight * 0.55,
+      vx: rand(-9, 9), vy: rand(-16, -5),
+      s: rand(5, 12), rot: rand(0, 6.28), vr: rand(-0.3, 0.3),
+      color: CONF_COLORS[Math.floor(Math.random() * CONF_COLORS.length)],
+      life: rand(90, 150)
+    });
+  }
+  sfx.pop();
+  if(!confRunning){ confRunning = true; tickConfetti(); }
+}
+function tickConfetti(){
+  cctx.clearRect(0, 0, confCanvas.width, confCanvas.height);
+  confPieces = confPieces.filter(p => p.life > 0 && p.y < confCanvas.height + 30);
+  for(const p of confPieces){
+    p.x += p.vx; p.y += p.vy; p.vy += 0.32; p.vx *= 0.99;
+    p.rot += p.vr; p.life--;
+    cctx.save();
+    cctx.translate(p.x, p.y);
+    cctx.rotate(p.rot);
+    cctx.fillStyle = p.color;
+    cctx.globalAlpha = Math.min(1, p.life / 40);
+    cctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 0.6);
+    cctx.restore();
+  }
+  if(confPieces.length){ requestAnimationFrame(tickConfetti); }
+  else { confRunning = false; cctx.clearRect(0, 0, confCanvas.width, confCanvas.height); }
+}
+
+/* ============================== picking (tap / click planets) ============================== */
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let downX = 0, downY = 0, downT = 0;
+
+renderer.domElement.addEventListener('pointerdown', e => {
+  downX = e.clientX; downY = e.clientY; downT = performance.now();
+});
+renderer.domElement.addEventListener('pointerup', e => {
+  const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
+  if(moved > 9 || performance.now() - downT > 600) return;   // it was a drag
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(pickables, false);
+  if(hits.length){
+    const body = bodyById[hits[0].object.userData.bodyId];
+    if(body) visit(body);
+  }
+});
+// mouse hover cursor
+let hoverThrottle = 0;
+renderer.domElement.addEventListener('pointermove', e => {
+  if(e.pointerType !== 'mouse') return;
+  const now = performance.now();
+  if(now - hoverThrottle < 90) return;
+  hoverThrottle = now;
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  renderer.domElement.style.cursor = raycaster.intersectObjects(pickables, false).length ? 'pointer' : 'grab';
+});
+
+/* ============================== UI wiring ============================== */
+let timeScale = 1;
+function setTime(scale, btn){
+  timeScale = scale;
+  for(const id of ['tPause', 'tPlay', 'tFast']) $(id).classList.remove('on');
+  $(btn).classList.add('on');
+  sfx.blip();
+}
+$('tPause').addEventListener('click', () => setTime(0, 'tPause'));
+$('tPlay').addEventListener('click', () => setTime(1, 'tPlay'));
+$('tFast').addEventListener('click', () => setTime(8, 'tFast'));
+
+$('muteBtn').addEventListener('click', () => {
+  sfx.setMuted(!sfx.muted);
+  $('muteBtn').textContent = sfx.muted ? '🔇' : '🔊';
+  if(!sfx.muted) sfx.blip();
+});
+$('helpBtn').addEventListener('click', () => { sfx.blip(); $('helpModal').style.display = 'flex'; });
+$('passportBtn').addEventListener('click', () => { sfx.blip(); $('passportModal').style.display = 'flex'; });
+document.querySelectorAll('.modal .close').forEach(btn => {
+  btn.addEventListener('click', () => { sfx.blip(); $(btn.dataset.close).style.display = 'none'; });
+});
+document.querySelectorAll('.modal').forEach(mod => {
+  mod.addEventListener('click', e => { if(e.target === mod) mod.style.display = 'none'; });
+});
+$('resetBtn').addEventListener('click', () => {
+  visited = new Set();
+  missionIdx = 0;
+  saveProgress();
+  updatePassportUI();
+  renderMission();
+  sfx.blip();
+  showToast('🔄 Fresh start! A brand new adventure begins!');
+});
+$('missionSkip').addEventListener('click', () => {
+  missionIdx++;
+  saveProgress();
+  renderMission();
+  sfx.blip();
+});
+
+function buildNav(){
+  const nav = $('nav');
+  const all = document.createElement('button');
+  all.className = 'navbtn';
+  all.innerHTML = '<span class="e">🌌</span><span class="n">All</span>';
+  all.addEventListener('click', () => { sfx.blip(); goOverview(); });
+  nav.appendChild(all);
+  for(const b of BODIES){
+    const btn = document.createElement('button');
+    btn.className = 'navbtn';
+    btn.id = 'nav-' + b.id;
+    const e1 = document.createElement('span'); e1.className = 'e'; e1.textContent = b.emoji;
+    const n1 = document.createElement('span'); n1.className = 'n'; n1.textContent = b.name.replace('The ', '');
+    btn.append(e1, n1);
+    btn.addEventListener('click', () => visit(b));
+    nav.appendChild(btn);
+  }
+}
+
+function buildPassport(){
+  const grid = $('passGrid');
+  for(const b of BODIES){
+    const cell = document.createElement('div');
+    cell.className = 'stamp';
+    cell.id = 'stamp-' + b.id;
+    const se = document.createElement('div'); se.className = 'se'; se.textContent = b.emoji;
+    const sn = document.createElement('div'); sn.className = 'sn'; sn.textContent = b.name;
+    cell.append(se, sn);
+    grid.appendChild(cell);
+  }
+}
+
+/* ============================== main loop ============================== */
+const clock = new THREE.Clock();
+let elapsed = 0;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const simDt = dt * timeScale;
+  elapsed += dt;
+
+  // orbits + spins
+  for(const body of BODIES){
+    if(body.dist > 0 && body.period){
+      body.angle += simDt * (2 * Math.PI / (90 * body.period));
+      updateBodyPosition(body);
+    }
+    if(body.mesh) body.mesh.rotation.y += simDt * body.spin;
+  }
+  if(earthClouds) earthClouds.rotation.y += simDt * 0.62;
+  if(beltGroup) beltGroup.rotation.y += simDt * 0.012;
+  if(sunGlow1){
+    const pulse = 1 + 0.05 * Math.sin(elapsed * 1.7);
+    sunGlow1.scale.setScalar(70 * pulse);
+    sunGlow1.material.opacity = 0.85 + 0.1 * Math.sin(elapsed * 2.3);
+  }
+
+  // shooting stars
+  if(elapsed > nextShootingStar){
+    spawnShootingStar();
+    nextShootingStar = elapsed + rand(7, 20);
+  }
+  updateShootingStars(dt);
+
+  updateFlight(dt);
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+}
+
+function onResize(){
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', () => setTimeout(onResize, 300));
+document.addEventListener('visibilitychange', () => { if(!document.hidden) sfx.resume(); });
+
+/* ============================== boot ============================== */
+async function boot(){
+  await Promise.all(Object.entries(TEX_DEFS).map(([k, d]) => loadTex(k, d)));
+  buildScene();
+  buildNav();
+  buildPassport();
+  updatePassportUI();
+  animate();
+
+  $('loadStatus').textContent = 'Rocket ready! 🚀';
+  const btn = $('blastBtn');
+  btn.disabled = false;
+
+  btn.addEventListener('click', () => {
+    sfx.init();
+    sfx.resume();
+    sfx.launch();
+    $('startScreen').classList.add('hide');
+    startFlight(3.4, () => ({ cam: V3(0, 120, 330), tgt: V3(0, 0, 0) }), () => {
+      renderMission();
+      showToast('👆 Drag to look around • 🤏 Pinch or scroll to zoom • Tap a planet to visit!', 6500);
+      speak('Welcome aboard, Space Explorer! Tap any planet to fly to it. Your first mission is waiting at the top of the screen!');
+    });
+  }, { once: true });
+}
+boot();
+</script>
+</body>
+</html>
