@@ -4,6 +4,11 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
 <meta name="theme-color" content="#05060f"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="icon" type="image/png" href="/icon-192.png" sizes="192x192"/>
+<link rel="apple-touch-icon" href="/icon-192.png"/>
 <title>🚀 Space Explorer — Solar System Adventure</title>
 <style>
   :root{
@@ -342,6 +347,17 @@
     "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
     "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
   }
+}
+</script>
+
+<!-- PWA: register service worker -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Service worker registration failed — app will still work
+    });
+  });
 }
 </script>
 
