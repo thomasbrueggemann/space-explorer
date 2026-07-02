@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#05060f"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<link rel="manifest" href="/manifest.json"/>
-<link rel="icon" type="image/png" href="/icon-192.png" sizes="192x192"/>
-<link rel="apple-touch-icon" href="/icon-192.png"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="icon" type="image/png" href="icon-192.png" sizes="192x192"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
 <title>🚀 Space Explorer — Solar System Adventure</title>
 <style>
   :root{
@@ -354,7 +354,7 @@
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
+    navigator.serviceWorker.register('sw.js').catch(() => {
       // Service worker registration failed — app will still work
     });
   });

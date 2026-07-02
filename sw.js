@@ -1,8 +1,8 @@
 const CACHE_NAME = 'space-explorer-v1';
 const PRECACHE_URLS = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  './',
+  'index.html',
+  'manifest.json'
 ];
 
 // Three.js and addons — loaded via importmap at runtime
@@ -30,8 +30,10 @@ const RUNTIME_TEXTURE_URLS = TEX_FILES.map(f => TEX_BASE + f);
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
+      // App shell must cache for install to succeed.
       return cache.addAll(PRECACHE_URLS).then(() => {
-        return cache.addAll(RUNTIME_IMPORTMAP_URLS);
+        // CDN assets are best-effort: a hiccup here must not abort install.
+        return cache.addAll(RUNTIME_IMPORTMAP_URLS).catch(() => {});
       });
     })
   );
